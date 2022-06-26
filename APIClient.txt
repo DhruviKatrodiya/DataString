@@ -1,0 +1,143 @@
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using MyCoreWebAPIClientAppCS.Models;
+using Newtonsoft.Json;
+using System.Collections.Generic;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace MyCoreWebAPIClientAppCS.Controllers
+{
+    public class StudentController : Controller
+    {
+        // GET: StudentController
+
+        private static List<MyStudent> myStudents = new List<MyStudent>();
+        private HttpClient httpClient = new HttpClient();
+        private string url = "";
+
+        public StudentController()
+        {
+            url = @"https://localhost:44308/api/Students";
+            httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        }
+        public async Task<ActionResult> Index()
+        {
+            var msg = await httpClient.GetAsync(url);
+            var studentResponse = msg.Content.ReadAsStringAsync();
+            myStudents = JsonConvert.DeserializeObject<List<MyStudent>>(studentResponse.Result);
+            return View(myStudents);
+        }
+
+        // GET: StudentController/Details/5
+        public async Task<ActionResult> Details(int id)
+        {
+            return View(await getStudentById(id));
+        }
+
+        // GET: StudentController/Create
+        public ActionResult Create()
+        {
+            return View();
+        }
+
+        // POST: StudentController/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> Create(MyStudent newStudent)
+        {
+            try
+            {
+                StringContent studentContent = new StringContent(
+                    JsonConvert.SerializeObject(newStudent), Encoding.UTF8, "application/json");
+                var msg = await httpClient.PostAsync(url, studentContent);
+                var StudentResponse = msg.Content.ReadAsStringAsync();
+
+                if(StudentResponse.Result.Contains("Conflict"))
+                {
+                    return RedirectToAction(nameof(Create));
+                }
+                return RedirectToAction(nameof(Index));
+            }
+            catch
+            {
+                return View();
+            }
+        }
+
+        // GET: StudentController/Edit/5
+        public async Task<ActionResult> Edit(int id)
+        {
+            return View(await getStudentById(id));
+        }
+
+        // POST: StudentController/Edit/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> Edit(int id, MyStudent studentToEdit)
+        {
+            try
+            {
+                MyStudent myStudent = await getStudentById(id);
+                myStudent.StudentName = studentToEdit.StudentName;
+                myStudent.PhoneNo = studentToEdit.PhoneNo;
+                myStudent.Gender = studentToEdit.Gender;
+                myStudent.CourseId = studentToEdit.CourseId;
+
+                StringContent studentContent = new StringContent(JsonConvert.SerializeObject(myStudent), Encoding.UTF8, "application/json");
+                var msg = await httpClient.PutAsync(url + "/" + id, studentContent);
+                var StudentResponse = msg.Content.ReadAsStringAsync();
+                myStudents = JsonConvert.DeserializeObject<List<MyStudent>>(StudentResponse.Result);
+
+                if(StudentResponse.Result.Contains("Conflict"))
+                {
+                    return RedirectToAction(nameof(Edit), id);
+                }
+                return RedirectToAction(nameof(Index));
+            }
+            catch
+            {
+                return View();
+            }
+        }
+
+        // GET: StudentController/Delete/5
+        public async Task<ActionResult> Delete(int id)
+        {
+            return View(await getStudentById(id));
+        }
+
+        // POST: StudentController/Delete/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> Delete(int id, MyStudent studentToDelete)
+        {
+            try
+            {
+                var msg = await httpClient.DeleteAsync(url + "/" + id);
+                var StudentResponse = msg.Content.ReadAsStringAsync();
+                myStudents = JsonConvert.DeserializeObject<List<MyStudent>>(StudentResponse.Result);
+                if(StudentResponse.Result.Contains("Conflict"))
+                {
+                    return RedirectToAction(nameof(Delete), id);
+                }
+                return RedirectToAction(nameof(Index));
+            }
+            catch
+            {
+                return View();
+            }
+        }
+
+        public async Task<MyStudent> getStudentById(int id)
+        {
+            var msg = await httpClient.GetAsync(url + "/" +id);
+            var studentResponse = msg.Content.ReadAsStringAsync();
+            MyStudent myStudents = JsonConvert.DeserializeObject<MyStudent>(studentResponse.Result);
+            return myStudents;
+        }
+
+    }
+}
